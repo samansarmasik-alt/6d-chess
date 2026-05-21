@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>6D Chess - Hyper-Dimensional Multiplayer Matchmaker</title>
+  <!-- Google Fonts: Space Grotesk & Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+  <!-- Socket.io client script -->
+  <script src="/socket.io/socket.io.js"></script>
+</head>
+<body>
+
+  <!-- Background Decorative Grid and Nebulae -->
+  <div class="bg-effects">
+    <div class="nebula nebula-1"></div>
+    <div class="nebula nebula-2"></div>
+    <div class="stars"></div>
+  </div>
+
+  <!-- MAIN APP CONTAINER -->
+  <div id="app" class="app-container">
+
+    <!-- 1. LANDING & LOBBIES SCREEN -->
+    <section id="screen-landing" class="screen active">
+      <header class="hero-header">
+        <div class="logo-area">
+          <span class="dimension-badge">6D</span>
+          <h1>HYPERCHESS</h1>
+        </div>
+        <p class="subtitle">Hiper-Boyutlu Güvenli Çok Oyunculu Satranç Deneyimi</p>
+      </header>
+
+      <div class="main-dashboard">
+        <!-- Join / Create Room Panel -->
+        <div class="control-panel glass-card">
+          <h2>Profil Oluştur</h2>
+          <div class="form-group">
+            <label for="input-nickname">Oyuncu Adı</label>
+            <input type="text" id="input-nickname" placeholder="Nickname giriniz..." maxlength="15" value="Gezgin">
+          </div>
+
+          <div class="action-buttons">
+            <button id="btn-open-create-modal" class="btn btn-primary btn-glow">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+              Lobi Oluştur
+            </button>
+            <button id="btn-refresh-lobbies" class="btn btn-secondary">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"></path></svg>
+              Yenile
+            </button>
+          </div>
+
+          <div class="info-alert">
+            <div class="alert-icon">🛡️</div>
+            <div class="alert-content">
+              <strong>IP Koruma Aktif:</strong> Bağlantı tamamen merkezi sunucu üzerinden aktarılır. Diğer oyuncular harici ağdan IP adresinizi kesinlikle göremez.
+            </div>
+          </div>
+        </div>
+
+        <!-- Lobbies List Panel -->
+        <div class="lobbies-panel glass-card">
+          <div class="panel-header">
+            <h2>Aktif Lobiler</h2>
+            <span class="active-count-badge" id="lobby-count">0 Oda Aktif</span>
+          </div>
+          
+          <div class="lobbies-container">
+            <div class="lobbies-table-wrapper">
+              <table class="lobbies-table">
+                <thead>
+                  <tr>
+                    <th>Oda Adı</th>
+                    <th>Boyutlar</th>
+                    <th>Mod</th>
+                    <th>Oyuncu</th>
+                    <th>İşlem</th>
+                  </tr>
+                </thead>
+                <tbody id="lobbies-list-body">
+                  <!-- Lobbies injected here via JS -->
+                  <tr class="empty-state">
+                    <td colspan="5">Aktif genel lobi bulunamadı. Hemen yeni bir lobi oluşturun!</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 2. ROOM LOBBY SCREEN -->
+    <section id="screen-room" class="screen">
+      <div class="room-layout">
+        <!-- Room Info & Settings -->
+        <div class="room-settings-panel glass-card">
+          <div class="room-header">
+            <button id="btn-leave-room" class="btn btn-icon-text btn-danger">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
+              Odadan Ayrıl
+            </button>
+            <div class="room-title-wrapper">
+              <h2 id="room-name-display">Hyper Domain</h2>
+              <div class="room-id-badge" id="room-id-display" title="Tıklayıp Kopyala">ID: XXXXX</div>
+            </div>
+          </div>
+
+          <!-- Host-controlled settings (Read-only for guests) -->
+          <div class="settings-form" id="lobby-settings-form">
+            <h3>Oda ve Boyut Ayarları</h3>
+            
+            <div class="form-group">
+              <label for="select-preset">Boyut Şablonu</label>
+              <select id="select-preset">
+                <option value="2d">2D Klasik (8x8)</option>
+                <option value="3d">3D Uzay Satrancı (5x5x3)</option>
+                <option value="4d">4D Zaman Tüneli (4x4x2x2)</option>
+                <option value="5d">5D Multiverse (4x4x2x2x2)</option>
+                <option value="6d" selected>6D Hiper Uzay (4x4x2x2x2x2)</option>
+                <option value="custom">Özel Boyutlandır</option>
+              </select>
+            </div>
+
+            <!-- Custom Dimension Sliders (shown when 'custom' selected or editable) -->
+            <div class="custom-dimensions-grid" id="custom-dims-wrapper">
+              <div class="dim-control">
+                <label>X (Genişlik): <span id="val-dim-x">4</span></label>
+                <input type="range" id="slider-dim-x" min="3" max="8" value="4">
+              </div>
+              <div class="dim-control">
+                <label>Y (Yükseklik): <span id="val-dim-y">4</span></label>
+                <input type="range" id="slider-dim-y" min="3" max="8" value="4">
+              </div>
+              <div class="dim-control">
+                <label>Z (Katman): <span id="val-dim-z">2</span></label>
+                <input type="range" id="slider-dim-z" min="1" max="4" value="2">
+              </div>
+              <div class="dim-control">
+                <label>W (Zaman): <span id="val-dim-w">2</span></label>
+                <input type="range" id="slider-dim-w" min="1" max="4" value="2">
+              </div>
+              <div class="dim-control">
+                <label>V (Evren): <span id="val-dim-v">2</span></label>
+                <input type="range" id="slider-dim-v" min="1" max="4" value="2">
+              </div>
+              <div class="dim-control">
+                <label>U (Gerçeklik): <span id="val-dim-u">2</span></label>
+                <input type="range" id="slider-dim-u" min="1" max="4" value="2">
+              </div>
+            </div>
+
+            <div class="form-row">
+              <div class="form-group half">
+                <label for="select-mode">Oyun Modu</label>
+                <select id="select-mode">
+                  <option value="classic">Klasik 6D</option>
+                  <option value="portal">Portal Geçiş Modu</option>
+                  <option value="quantum">Kuantum Süperpozisyonu</option>
+                  <option value="gravity">Z-Katman Yerçekimi</option>
+                </select>
+              </div>
+
+              <div class="form-group half">
+                <label for="select-timer">Zaman Kontrolü</label>
+                <select id="select-timer">
+                  <option value="0">Sınırsız Süre</option>
+                  <option value="60">1 Dakika (Blitz)</option>
+                  <option value="180">3 Dakika (Super Blitz)</option>
+                  <option value="300">5 Dakika (Rapid)</option>
+                  <option value="600">10 Dakika</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="form-row">
+              <div class="form-group half checkbox-group">
+                <input type="checkbox" id="check-private">
+                <label for="check-private">Gizli Oda (Şifreli)</label>
+              </div>
+              <div class="form-group half" id="password-group" style="display:none;">
+                <label for="input-lobby-password">Oda Şifresi</label>
+                <input type="password" id="input-lobby-password" placeholder="Şifre belirleyin...">
+              </div>
+            </div>
+
+            <button id="btn-save-settings" class="btn btn-secondary btn-full">Ayarları Güncelle</button>
+          </div>
+        </div>
+
+        <!-- Players List & Chat -->
+        <div class="room-players-panel">
+          <!-- Players list -->
+          <div class="players-card glass-card">
+            <h3>Oyuncular</h3>
+            <div class="players-list" id="lobby-players-list">
+              <!-- Players injected here via JS -->
+            </div>
+            <button id="btn-start-game" class="btn btn-primary btn-glow btn-full" disabled>
+              🎲 Yazı-Tura ile Oyunu Başlat
+            </button>
+            <p class="waiting-tip" id="waiting-msg">Diğer oyuncunun katılması bekleniyor...</p>
+          </div>
+
+          <!-- Lobby Chat -->
+          <div class="chat-card glass-card">
+            <h3>Lobi Sohbet</h3>
+            <div class="chat-messages" id="lobby-chat-messages">
+              <!-- Chat injected here -->
+            </div>
+            <div class="chat-input-area">
+              <input type="text" id="input-chat-message" placeholder="Mesaj yazın..." maxlength="100">
+              <button id="btn-send-chat" class="btn btn-secondary">Gönder</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 3. GAME SCREEN -->
+    <section id="screen-game" class="screen">
+      <div class="game-layout">
+        
+        <!-- Left Column: Players, Turn Info, Chat -->
+        <div class="game-sidebar left-sidebar">
+          <!-- Game Info Card -->
+          <div class="game-info-card glass-card">
+            <div class="game-meta">
+              <span class="game-mode-badge" id="game-active-mode">KLASİK 6D</span>
+              <span class="game-id-badge" id="game-room-id">ID: XXXXX</span>
+            </div>
+            
+            <div class="players-vs">
+              <div class="player-vs-node white-side" id="p-white-card">
+                <span class="color-dot white"></span>
+                <span class="p-name" id="game-p-white-name">White Player</span>
+                <span class="timer glow-white" id="game-p-white-timer">∞</span>
+              </div>
+              <div class="vs-divider">VS</div>
+              <div class="player-vs-node black-side" id="p-black-card">
+                <span class="color-dot black"></span>
+                <span class="p-name" id="game-p-black-name">Black Player</span>
+                <span class="timer" id="game-p-black-timer">∞</span>
+              </div>
+            </div>
+
+            <div class="turn-announcement" id="turn-announcer">
+              Sıra: <strong id="current-turn-player">Beyaz</strong>
+            </div>
+
+            <div class="game-controls">
+              <button id="btn-game-forfeit" class="btn btn-danger btn-sm">Çekil (Forfeit)</button>
+              <button id="btn-game-lobby" class="btn btn-secondary btn-sm" style="display:none;">Lobiye Dön</button>
+            </div>
+          </div>
+
+          <!-- History / Move Log -->
+          <div class="move-log-card glass-card">
+            <h3>Hamle Geçmişi</h3>
+            <div class="history-list" id="game-move-history">
+              <!-- Moves injected here -->
+            </div>
+          </div>
+
+          <!-- In-game Chat -->
+          <div class="game-chat-card glass-card">
+            <div class="chat-messages" id="game-chat-messages"></div>
+            <div class="chat-input-area">
+              <input type="text" id="input-game-chat" placeholder="Sohbete yazın..." maxlength="100">
+              <button id="btn-send-game-chat" class="btn btn-secondary">Gönder</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Center Column: Multi-dimensional Workspace -->
+        <div class="game-workspace">
+          <!-- Coordinates bar -->
+          <div class="coords-display-header glass-card">
+            <div class="dim-coords">
+              <span>Mevcut Koordinat:</span>
+              <span class="coord-tag x">X</span>
+              <span class="coord-tag y">Y</span>
+              <span class="coord-value" id="lbl-coord-slice">[0, 0, 0, 0]</span>
+            </div>
+            <div class="instructions-panel">
+              <span id="game-mode-tip">Taşlarınızı diğer boyutlara hareket ettirmek için tahtadaki taşa tıklayıp sağ paneldeki diğer tahtaları kontrol edin.</span>
+            </div>
+          </div>
+
+          <!-- Main Board Area -->
+          <div class="main-board-container glass-card" id="main-board-viewport">
+            <!-- Canvas Overlay for hyper-dimension vector links -->
+            <canvas id="canvas-links" class="vector-overlay"></canvas>
+            
+            <!-- Chess Board Grid -->
+            <div class="chess-board" id="main-chess-board">
+              <!-- Generated dynamically by UI.js -->
+            </div>
+          </div>
+
+          <!-- Game State Overlay (Checkmate, Stalemate, Coinflip start) -->
+          <div class="game-overlay" id="board-overlay">
+            <div class="overlay-content">
+              <h2 id="overlay-title">Mat!</h2>
+              <p id="overlay-desc">Beyaz taraf oyunu kazandı.</p>
+              <button id="btn-overlay-close" class="btn btn-primary">Tamam</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right Column: Dimensional Navigator -->
+        <div class="game-sidebar right-sidebar glass-card">
+          <h3>Boyut Gezgini</h3>
+          <p class="nav-desc">Yüksek boyutlar arası geçiş yapın. Hücrelerin içeriklerini ve aktif parçaları inceleyin.</p>
+
+          <!-- 4 Dimension Sliders (Z, W, V, U) -->
+          <div class="navigator-sliders">
+            <div class="nav-slider-row" id="group-nav-z">
+              <label>Z (Katman):</label>
+              <div class="slider-control">
+                <button class="btn-step" id="btn-step-z-down">-</button>
+                <span class="nav-val" id="lbl-nav-z">0</span>
+                <button class="btn-step" id="btn-step-z-up">+</button>
+              </div>
+            </div>
+            <div class="nav-slider-row" id="group-nav-w">
+              <label>W (Zaman):</label>
+              <div class="slider-control">
+                <button class="btn-step" id="btn-step-w-down">-</button>
+                <span class="nav-val" id="lbl-nav-w">0</span>
+                <button class="btn-step" id="btn-step-w-up">+</button>
+              </div>
+            </div>
+            <div class="nav-slider-row" id="group-nav-v">
+              <label>V (Evren):</label>
+              <div class="slider-control">
+                <button class="btn-step" id="btn-step-v-down">-</button>
+                <span class="nav-val" id="lbl-nav-v">0</span>
+                <button class="btn-step" id="btn-step-v-up">+</button>
+              </div>
+            </div>
+            <div class="nav-slider-row" id="group-nav-u">
+              <label>U (Gerçeklik):</label>
+              <div class="slider-control">
+                <button class="btn-step" id="btn-step-u-down">-</button>
+                <span class="nav-val" id="lbl-nav-u">0</span>
+                <button class="btn-step" id="btn-step-u-up">+</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Grid of all Boards -->
+          <div class="hyperspace-grid-container">
+            <h4>Hiper Uzay Haritası</h4>
+            <div class="hyperspace-board-matrix" id="matrix-boards">
+              <!-- Loaded dynamically with mini boards -->
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+  </div>
+
+  <!-- PASSWORD PROMPT MODAL -->
+  <div class="modal" id="modal-password">
+    <div class="modal-content glass-card">
+      <h2>Oda Şifresi Gerekli</h2>
+      <p>Bu lobi şifre ile korunmaktadır. Lütfen şifreyi giriniz:</p>
+      <input type="password" id="input-join-password" placeholder="Şifre...">
+      <div class="modal-buttons">
+        <button id="btn-password-submit" class="btn btn-primary">Giriş Yap</button>
+        <button id="btn-password-cancel" class="btn btn-secondary">İptal</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- LOBBY CREATE MODAL -->
+  <div class="modal" id="modal-create-lobby">
+    <div class="modal-content glass-card wide-modal">
+      <h2>Lobi Oluştur</h2>
+      
+      <div class="form-group">
+        <label for="input-create-room-name">Oda İsmi</label>
+        <input type="text" id="input-create-room-name" placeholder="Oda ismi girin...">
+      </div>
+
+      <div class="form-row">
+        <div class="form-group half">
+          <label for="select-create-preset">Boyut Seçimi</label>
+          <select id="select-create-preset">
+            <option value="2d">2D Klasik (8x8)</option>
+            <option value="3d">3D Katmanlı Uzay (5x5x3)</option>
+            <option value="4d">4D Zaman Tüneli (4x4x2x2)</option>
+            <option value="5d">5D Multiverse (4x4x2x2x2)</option>
+            <option value="6d" selected>6D Hiper Chess (4x4x2x2x2x2)</option>
+            <option value="custom">Özel Boyutlandır...</option>
+          </select>
+        </div>
+
+        <div class="form-group half">
+          <label for="select-create-mode">Oyun Modu</label>
+          <select id="select-create-mode">
+            <option value="classic">Klasik 6D</option>
+            <option value="portal">Portal Geçiş Modu</option>
+            <option value="quantum">Kuantum Süperpozisyonu</option>
+            <option value="gravity">Z-Katman Yerçekimi</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Creation custom sliders -->
+      <div class="custom-dimensions-grid creation-only" id="create-dims-wrapper" style="display:none;">
+        <div class="dim-control">
+          <label>X (Genişlik): <span id="val-create-x">4</span></label>
+          <input type="range" id="slider-create-x" min="3" max="8" value="4">
+        </div>
+        <div class="dim-control">
+          <label>Y (Yükseklik): <span id="val-create-y">4</span></label>
+          <input type="range" id="slider-create-y" min="3" max="8" value="4">
+        </div>
+        <div class="dim-control">
+          <label>Z (Katman): <span id="val-create-z">2</span></label>
+          <input type="range" id="slider-create-z" min="1" max="4" value="2">
+        </div>
+        <div class="dim-control">
+          <label>W (Zaman): <span id="val-create-w">2</span></label>
+          <input type="range" id="slider-create-w" min="1" max="4" value="2">
+        </div>
+        <div class="dim-control">
+          <label>V (Evren): <span id="val-create-v">2</span></label>
+          <input type="range" id="slider-create-v" min="1" max="4" value="2">
+        </div>
+        <div class="dim-control">
+          <label>U (Gerçeklik): <span id="val-create-u">2</span></label>
+          <input type="range" id="slider-create-u" min="1" max="4" value="2">
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group half">
+          <label for="select-create-timer">Zaman Kontrolü</label>
+          <select id="select-create-timer">
+            <option value="0">Sınırsız Süre</option>
+            <option value="60">1 Dakika (Blitz)</option>
+            <option value="180">3 Dakika (Super Blitz)</option>
+            <option value="300">5 Dakika (Rapid)</option>
+            <option value="600">10 Dakika</option>
+          </select>
+        </div>
+
+        <div class="form-group half checkbox-group justify-bottom">
+          <input type="checkbox" id="check-create-private">
+          <label for="check-create-private">Gizli Oda (Şifreli)</label>
+        </div>
+      </div>
+
+      <div class="form-group" id="create-password-group" style="display:none;">
+        <label for="input-create-password">Oda Giriş Şifresi</label>
+        <input type="password" id="input-create-password" placeholder="Şifre belirleyin...">
+      </div>
+
+      <div class="modal-buttons">
+        <button id="btn-create-lobby-submit" class="btn btn-primary btn-glow">Oluştur</button>
+        <button id="btn-create-lobby-cancel" class="btn btn-secondary">Vazgeç</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- COIN FLIP SCREEN OVERLAY -->
+  <div class="coinflip-overlay" id="coinflip-screen">
+    <div class="coinflip-wrapper">
+      <div class="coin-container">
+        <!-- CSS 3D Rotating Coin -->
+        <div class="coin" id="physical-coin">
+          <div class="coin-face heads">6D</div>
+          <div class="coin-face tails">CHESS</div>
+        </div>
+      </div>
+      <h2 class="coinflip-title">KUR'A ÇEKİLİYOR...</h2>
+      <p class="coinflip-subtitle">Sıranın kimin olacağı yazı tura ile belirleniyor</p>
+      
+      <!-- Coin flip result box -->
+      <div class="coinflip-result-card glass-card" id="coinflip-result-box">
+        <h3 id="coinflip-result-text">Yazı Geldi!</h3>
+        <p id="coinflip-result-desc">Beyaz rengi ve ilk hamle sırasını <strong>Oyuncu 1</strong> kazandı.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Scripts -->
+  <script src="js/game.js"></script>
+  <script src="js/ui.js"></script>
+  <script src="js/network.js"></script>
+</body>
+</html>

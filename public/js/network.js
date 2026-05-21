@@ -5,6 +5,49 @@
  */
 
 document.addEventListener('DOMContentLoaded', () => {
+  // Check if Socket.io is loaded (fails when double-clicking index.html directly)
+  if (typeof io === 'undefined') {
+    const warningDiv = document.createElement('div');
+    warningDiv.style.position = 'fixed';
+    warningDiv.style.top = '0';
+    warningDiv.style.left = '0';
+    warningDiv.style.width = '100vw';
+    warningDiv.style.height = '100vh';
+    warningDiv.style.backgroundColor = 'rgba(10, 11, 16, 0.95)';
+    warningDiv.style.color = '#f0f2f5';
+    warningDiv.style.display = 'flex';
+    warningDiv.style.flexDirection = 'column';
+    warningDiv.style.alignItems = 'center';
+    warningDiv.style.justifyContent = 'center';
+    warningDiv.style.zIndex = '99999';
+    warningDiv.style.fontFamily = "'Space Grotesk', sans-serif";
+    warningDiv.style.padding = '20px';
+    warningDiv.style.textAlign = 'center';
+
+    warningDiv.innerHTML = `
+      <div style="background: rgba(17, 19, 30, 0.75); border: 1px solid rgba(0, 240, 255, 0.3); border-radius: 16px; padding: 40px; max-width: 600px; box-shadow: 0 0 30px rgba(0, 240, 255, 0.2); backdrop-filter: blur(10px);">
+        <span style="font-size: 4rem; display: block; margin-bottom: 20px;">⚠️</span>
+        <h2 style="font-size: 2rem; color: #fff; margin-bottom: 15px; background: linear-gradient(135deg, #fff 30%, #00f0ff 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">Bağlantı Kurulamadı!</h2>
+        <p style="color: #8e95a5; font-size: 1.1rem; line-height: 1.6; margin-bottom: 25px;">
+          Oyunu doğrudan HTML dosyasına çift tıklayarak (<code>file://</code> protokolüyle) açtınız veya sunucu çalışmıyor.
+        </p>
+        <div style="background: rgba(10, 11, 16, 0.9); border: 1px solid rgba(255, 255, 255, 0.05); border-radius: 8px; padding: 15px 20px; text-align: left; margin-bottom: 25px; font-family: monospace; font-size: 0.9rem; color: #f0f2f5;">
+          <strong style="color: #00f0ff;">Çözüm Adımları:</strong><br>
+          1. Terminali (PowerShell / Command Prompt) açın.<br>
+          2. Projenin bulunduğu klasöre gidin: <code>cd six_d_chess</code><br>
+          3. Projeyi başlatın: <code style="color: #bf80ff;">npm start</code><br>
+          4. Tarayıcınızdan şu adrese gidin: <a href="http://localhost:3000" style="color: #00f0ff; text-decoration: underline;">http://localhost:3000</a>
+        </div>
+        <div style="color: #ff007b; font-size: 0.85rem; font-weight: 600;">
+          🛡️ IP gizleme ve online lobi özellikleri için sunucu gereklidir.
+        </div>
+      </div>
+    `;
+    document.body.appendChild(warningDiv);
+    console.error('Socket.io is not loaded. Please access the site via http://localhost:3000');
+    return;
+  }
+
   // 1. Establish central Socket.io connection
   const socket = io();
   

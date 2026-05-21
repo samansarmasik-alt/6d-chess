@@ -319,14 +319,17 @@ class ChessUI {
 
   // View Screen Toggle
   switchScreen(screenName) {
-    Object.values(this.screens).forEach(screen => {
-      screen.classList.remove('active');
+    const targetKey = screenName.replace('screen-', '');
+    
+    Object.keys(this.screens).forEach(key => {
+      this.screens[key].classList.remove('active');
     });
     
     // Quick delay for neat transitions
     setTimeout(() => {
       Object.keys(this.screens).forEach(key => {
-        if (key === screenName) {
+        const normalizedKey = key.replace('screen-', '');
+        if (normalizedKey === targetKey) {
           this.screens[key].classList.add('active');
         }
       });
@@ -557,6 +560,30 @@ class ChessUI {
 
     // Dynamic Canvas resizing on windows resize
     window.onresize = () => this.resizeCanvas();
+
+    // Password Modal Events
+    this.btnPasswordSubmit.onclick = () => {
+      const password = this.joinPasswordInput.value.trim();
+      if (!this.selectedJoinRoomId) return;
+      this.socket.emit('join-room', {
+        roomId: this.selectedJoinRoomId,
+        playerName: this.nicknameInput.value.trim() || 'Gezgin',
+        password: password
+      });
+      this.modalPassword.classList.remove('active');
+      this.selectedJoinRoomId = null;
+    };
+
+    this.btnPasswordCancel.onclick = () => {
+      this.modalPassword.classList.remove('active');
+      this.selectedJoinRoomId = null;
+    };
+
+    this.joinPasswordInput.onkeydown = (e) => {
+      if (e.key === 'Enter') {
+        this.btnPasswordSubmit.click();
+      }
+    };
   }
 
   // Setup SVGs and canvas sizing for cross-dimension links
@@ -583,6 +610,7 @@ class ChessUI {
 
   // Render list of active lobbies in the Landing tab
   renderLobbiesList(lobbies) {
+    this.activeLobbies = lobbies;
     this.lobbiesListBody.innerHTML = '';
     
     if (lobbies.length === 0) {
@@ -628,11 +656,19 @@ class ChessUI {
 
   // Handles joining a room, prompt password if it is private
   promptPasswordJoin(roomId) {
-    this.socket.emit('join-room', {
-      roomId: roomId,
-      playerName: this.nicknameInput.value.trim() || 'Gezgin',
-      password: ''
-    });
+    const lobby = this.activeLobbies ? this.activeLobbies.find(r => r.id === roomId) : null;
+    if (lobby && lobby.isPrivate) {
+      this.modalPassword.classList.add('active');
+      this.selectedJoinRoomId = roomId;
+      this.joinPasswordInput.value = '';
+      this.joinPasswordInput.focus();
+    } else {
+      this.socket.emit('join-room', {
+        roomId: roomId,
+        playerName: this.nicknameInput.value.trim() || 'Gezgin',
+        password: ''
+      });
+    }
   }
 
   // Populate players inside the Lobby screen

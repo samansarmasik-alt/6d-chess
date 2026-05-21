@@ -163,6 +163,10 @@ io.on('connection', (socket) => {
       return socket.emit('error-msg', 'Şifre hatalı!');
     }
 
+    if (room.players.some(p => p.id === socket.id)) {
+      return socket.emit('error-msg', 'Bu odaya zaten katıldınız!');
+    }
+
     if (room.players.length >= 2) {
       return socket.emit('error-msg', 'Oda dolu! En fazla 2 oyuncu katılabilir.');
     }
